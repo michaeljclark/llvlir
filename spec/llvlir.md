@@ -36,24 +36,24 @@ or operand arguments for the intermediate representation operations:
 Opcode types are used in opcode mnemonics to encode which type parameters
 are needed to fully specify the type width and vector size of an operation.
 
-mnem | mnemonic list       | parameters                                       |
+mnem | mnemonic            | parameters                                       |
 ---- | ------------------- | ------------------------------------------------ |
 `I`  | integer type        | `( iv, i8, i16, i32, i64, i128 )`                |
 `F`  | floating-point type | `( fv, f16, f32, f64, f128 )`                    |
 `L`  | label type          | `( local, global )`                              |
 `n`  | quantifier          | `( N )`                                          |
 `V`  | vector size         | `( 2, 4, 8, 16, 32, 64, 128 )`                   |
-`4`  | 1/4th vector size   | _no argument_                                    |
-`2`  | 1/2th vector size   | _no argument_                                    |
-`D`  | double vector size  | _no argument_                                    |
-`Q`  | quad vector size    | _no argument_                                    |
+`2`  | /2 vector size      | _no argument_                                    |
+`4`  | /4 vector size      | _no argument_                                    |
+`D`  | *2 vector size      | _no argument_                                    |
+`Q`  | *4 vector size      | _no argument_                                    |
 
 ### Operand Types
 
 Operand types are used in format strings that encode the input and output
 operands for each operation.
 
-mnem | mnemonic list       | arguments                                        |
+mnem | mnemonic           | arguments                                        |
 ---- | ------------------- | ------------------------------------------------ |
 `v`  | void                | _no argument_                                    |
 `a`  | address register    | _LEB delta_                                      |
@@ -545,8 +545,8 @@ opcode            | operands | description                           | category
 `cmps.VIF`        | `xcxxm`  | compare and set float                 | vec-fp-pred
 `select.VIF`      | `xxxxm`  | select float                          | vec-fp-pred
 `class.VIF`       | `xxm`    | classify float                        | vec-fp-pred
-`pair.add.VF`     | `xxm`    | pair add reduce float                 | vec-fp-horiz
-`pair.sub.VF`     | `xxm`    | pair sub reduce int                   | vec-fp-horiz
+`pair.add.VF2`    | `xxm`    | pair add reduce float                 | vec-fp-horiz
+`pair.sub.VF2`    | `xxm`    | pair sub reduce int                   | vec-fp-horiz
 `cumsum.VF`       | `xxm`    | cumulative sum float                  | vec-fp-horiz
 
 ### Operation Statistics
