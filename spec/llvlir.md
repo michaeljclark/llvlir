@@ -343,6 +343,12 @@ opcode            | operands | description                           | category
 `rem.I`           | `rrr`    | remainder int                         | arith
 `divu.I`          | `rrr`    | divide uint                           | arith
 `remu.I`          | `rrr`    | remainder uint                        | arith
+`rdiv.magic.I`    | `rr`     | reciprocal divide magic int           | arith
+`rdiv.more.I`     | `rr`     | reciprocal divide more int            | arith
+`rdiv.mult.I`     | `rrrr`   | reciprocal divide multiply int        | arith
+`rdivu.magic.I`   | `rr`     | reciprocal divide magic uint          | arith
+`rdivu.more.I`    | `rr`     | reciprocal divide more uint           | arith
+`rdivu.mult.I`    | `rrrr`   | reciprocal divide multiply uint       | arith
 `srl.I`           | `rrr`    | shift right logical int reg           | shift
 `sra.I`           | `rrr`    | shift right arithmetic int reg        | shift
 `sll.I`           | `rrr`    | shift left logical int reg            | shift
@@ -459,6 +465,8 @@ opcode            | operands | description                           | category
 `rem.VI`          | `xxxm`   | remainder int                         | vec-arith
 `divu.VI`         | `xxxm`   | divide uint                           | vec-arith
 `remu.VI`         | `xxxm`   | remainder uint                        | vec-arith
+`rdiv.mult.VI`    | `xxrr`   | reciprocal divide multiply int        | vec-arith
+`rdivu.mult.VI`   | `xxrr`   | reciprocal divide multiply uint       | vec-arith
 `srl.VI`          | `xxrm`   | shift right logical int reg           | vec-shift
 `sra.VI`          | `xxrm`   | shift right arithmetic int reg        | vec-shift
 `sll.VI`          | `xxrm`   | shift left logical int reg            | vec-shift
