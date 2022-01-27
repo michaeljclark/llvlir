@@ -30,6 +30,8 @@ or operand arguments for the intermediate representation operations:
 - floating point classification
 - comparison codes
 - memory ordering flags
+- type parameter codes
+- type definition flags
 
 ### Opcode Types
 
@@ -38,6 +40,9 @@ are needed to fully specify the type width and vector size of an operation.
 
 mnem | mnemonic            | parameters                                       |
 ---- | ------------------- | ------------------------------------------------ |
+`T`  | type type           | _type hash_                                      |
+`P`  | procedure type      | `{ p32, p64 }`                                   |
+`A`  | address type        | `{ a32, a64 }`                                   |
 `I`  | integer type        | `( iv, i8, i16, i32, i64, i128 )`                |
 `F`  | floating-point type | `( fv, f16, f32, f64, f128 )`                    |
 `L`  | label type          | `( local, global )`                              |
@@ -56,7 +61,9 @@ operands for each operation.
 mnem | mnemonic           | arguments                                        |
 ---- | ------------------- | ------------------------------------------------ |
 `v`  | void                | _no argument_                                    |
+`t`  | type register       | _LEB delta_                                      |
 `a`  | address register    | _LEB delta_                                      |
+`p`  | procedure register  | _LEB delta_                                      |
 `r`  | general register    | _LEB delta_                                      |
 `f`  | float register      | _LEB delta_                                      |
 `x`  | vector register     | _LEB delta_                                      |
@@ -64,7 +71,7 @@ mnem | mnemonic           | arguments                                        |
 `l`  | label               | _LEB prefixed string_                            |
 `i`  | immediate value     | _LEB integer_                                    |
 `c`  | comparison          | _LEB enum_                                       |
-`o`  | memory order        | _LEB enum_                                       |
+`o`  | order memory        | _LEB enum_                                       |
 `d`  | round mode          | _LEB enum_                                       |
 `s`  | string              | _LEB prefixed string_                            |
 `b`  | binary              | _LEB prefixed data_                              |
@@ -168,7 +175,7 @@ code | mnemonic        | description                             |
 
 ### Memory Ordering Flags
 
-Memory ordering flaga are used as arguments on loads, stores, atomic
+Memory ordering flags are used as arguments on loads, stores, atomic
 operations and fences.
 
 code | mnemonic        | description                             |
@@ -180,6 +187,66 @@ code | mnemonic        | description                             |
 8    | `bss`           | order before successor stores           |
 11   | `rel`           | release = `( apl \| aps \| bss )`       |
 13   | `acq`           | acquire = `( apl \| bsl \| bss )`       |
+
+### Type Parameter Codes
+
+Type parameter codes are used to tie the expected type kind for
+typed memory operations back to the type. In particular they
+control how the index parameter is interpreted, ignored for set,
+enum, and field; used as an element index for arrays; or used
+as an attribute index for struct and union. Type information is
+normally static, but if type values are loaded from memory then
+the type parameter should be checked. load address with type is
+used to calculate offsets which can usually be performed either
+statically or at link time.
+
+pow2 | mnemonic        | description                             |
+---- | --------------- | --------------------------------------- |
+0    | `intrinsic`     | intrinsic type                          |
+1    | `set`           | set type                                |
+2    | `enum`          | enum type                               |
+3    | `struct`        | struct type                             |
+4    | `union`         | union type                              |
+5    | `field`         | field type                              |
+6    | `array`         | array type                              |
+
+### Type Definition Flags
+
+Type definition flags are the set of attributes that apply to type
+operations which define types mapping to the C language types.
+
+pow2 | mnemonic        | description                             |
+---- | --------------- | --------------------------------------- |
+0    | `void`          | void type                               |
+1<<0 | `integral`      | integral type                           |
+1<<1 | `real`          | real number                             |
+1<<2 | `complex`       | complex number                          |
+1<<3 | `signed`        | signed type                             |
+1<<4 | `unsigned`      | unsigned type                           |
+1<<5 | `ieee754`       | IEEE-754 floating-point                 |
+\-   | `sint`          | `( integral \| signed )`                |
+\-   | `uint`          | `( integral \| unsigned )`              |
+\-   | `float`         | `( real     \| ieee754 )`               |
+\-   | `cfloat`        | `( complex  \| ieee754 )`               |
+1<<6 | `pad_pow2`      | struct pow2 padding                     |
+1<<7 | `pad_bit`       | struct bit padding                      |
+1<<8 | `pad_byte`      | struct byte padding                     |
+1<<9 | `bitfield`      | struct bitfield width present           |
+1<<10| `const`         | qualifier const                         |
+1<<11| `volatile`      | qualifier volatile                      |
+1<<12| `restrict`      | qualifier restrict                      |
+1<<13| `static`        | storage static                          |
+1<<14| `extern_c`      | C function or variable                  |
+1<<15| `inline`        | inline function                         |
+1<<16| `noreturn`      | noreturn function                       |
+1<<17| `local`         | field binding local                     |
+1<<18| `global`        | field binding global                    |
+1<<19| `weak`          | field binding weak                      |
+1<<20| `default`       | field visibility default                |
+1<<21| `hidden`        | field visibility hidden                 |
+1<<22| `in`            | param input                             |
+1<<23| `out`           | param output                            |
+1<<24| `vla`           | array is variable length                |
 
 ## Intermediate Representation Encoding
 
@@ -245,7 +312,9 @@ compose the primary width and types of the operation while some are modify it.
 
 There IR has five distinct register types and the types do not alias.
 
+- type register
 - address register
+- procedure register
 - general register
 - float register
 - vector register
@@ -267,322 +336,388 @@ operations to be instantiated with multiple type widths and vector sizes.
 
 opcode            | operands | description                           | category
 ------------------|----------|---------------------------------------|-----------
-`section`         | `vs`     | section                               | data
-`astring`         | `vs`     | raw string data                       | data
-`astringz`        | `vs`     | raw string data (zero terminated)     | data
-`ustring`         | `vs`     | UTF-8 string data                     | data
-`ustringz`        | `vs`     | UTF-8 string data (zero terminated)   | data
-`wstring`         | `vs`     | UTF-16 string data                    | data
-`wstringz`        | `vs`     | UTF-16 string data (zero terminated)  | data
-`word.I`          | `vi`     | word                                  | data
-`array.NI`        | `vb`     | array                                 | data
-`label.L`         | `vl`     | label address in symbol table         | constant
-`consta.L`        | `al`     | load label address                    | constant
-`const.I`         | `ri`     | load immediate int                    | constant
-`constu.I`        | `ri`     | load immediate uint                   | constant
-`const.F`         | `fi`     | load immediate float                  | constant
-`sysbr.I`         | `vi`     | system break                          | system
-`syscall.I`       | `vi`     | system call                           | system
-`sysret.I`        | `vi`     | system return                         | system
-`endbr.I`         | `vi`     | end branch                            | branch
-`jalr`            | `aa`     | jump and link register                | branch
-`jal.L`           | `al`     | jump and link label                   | branch
-`j.L`             | `vl`     | jump label                            | branch
-`cmpbr.I`         | `vcrrl`  | compare and branch                    | branch
-`cmpbrlr.I`       | `acrrl`  | compare branch and link register      | branch
-`fence`           | `vo`     | fence                                 | memory
-`ld.I`            | `raio`   | load int                              | memory
-`ldu.I`           | `raio`   | load uint                             | memory
-`ld.F`            | `faio`   | load float                            | memory
-`st.I`            | `vaior`  | store int                             | memory
-`st.F`            | `vaiof`  | store float                           | memory
-`ldidx.I`         | `raarr`  | load int stride offset                | memory
-`ldidxu.I`        | `raarr`  | load uint stride offset               | memory
-`ldidx.F`         | `raarr`  | load float stride offset              | memory
-`stidx.I`         | `vaarrr` | store int stride offset               | memory
-`stidx.F`         | `vaarrr` | store float stride offset             | memory
-`ll.I`            | `raio`   | lock and load int                     | memory
-`llu.I`           | `raio`   | lock and load uint                    | memory
-`sc.I`            | `raior`  | store conditional int                 | memory
-`mv`              | `rr`     | move int                              | arith
-`mvm`             | `mr`     | move mask int                         | arith
-`mva`             | `ar`     | move address int                      | arith
-`addpc.I`         | `arl`    | add program counter offset label      | arith
-`addp.I`          | `aar`    | add pointer int                       | arith
-`subp.I`          | `aar`    | sub pointer int                       | arith
-`pdiff.I`         | `raa`    | pointer difference                    | arith
-`addi.I`          | `rri`    | add int imm                           | arith
-`subi.I`          | `rri`    | sub int imm                           | arith
-`add.I`           | `rrr`    | add int                               | arith
-`addc.F`          | `rrrr`   | add with carry int                    | arith
-`sub.I`           | `rrr`    | sub int                               | arith
-`subb.I`          | `rrr`    | sub with borrow int                   | arith
-`addu.I`          | `rrr`    | add uint                              | arith
-`addcu.I`         | `rrrr`   | add with carry uint                   | arith
-`subu.I`          | `rrr`    | sub uint                              | arith
-`subbu.I`         | `rrr`    | sub with borrow uint                  | arith
-`and.I`           | `rrr`    | logical and int                       | arith
-`nand.I`          | `rrr`    | logical not and int                   | arith
-`andc.I`          | `rrr`    | logical and comp int                  | arith
-`or.I`            | `rrr`    | logical or int                        | arith
-`nor.I`           | `rrr`    | logical not or int                    | arith
-`orc.I`           | `rrr`    | logical or comp int                   | arith
-`xor.I`           | `rrr`    | logical xor int                       | arith
-`xnor.I`          | `rrr`    | logical not xor int                   | arith
-`neg.I`           | `rr`     | negate int                            | arith
-`not.I`           | `rr`     | complement int                        | arith
-`min.I`           | `rrr`    | minimum int                           | arith
-`max.I`           | `rrr`    | maximum int                           | arith
-`minu.I`          | `rrr`    | minimum uint                          | arith
-`maxu.I`          | `rrr`    | maximum uint                          | arith
-`mul.I`           | `rrr`    | multiply int                          | arith
-`mulu.I`          | `rrr`    | multiply uint                         | arith
-`mulh.I`          | `rrr`    | multiply high int                     | arith
-`mulhu.I`         | `rrr`    | multiply high uint                    | arith
-`div.I`           | `rrr`    | divide int                            | arith
-`rem.I`           | `rrr`    | remainder int                         | arith
-`divu.I`          | `rrr`    | divide uint                           | arith
-`remu.I`          | `rrr`    | remainder uint                        | arith
-`rdiv.magic.I`    | `rr`     | reciprocal divide magic int           | arith
-`rdiv.more.I`     | `rr`     | reciprocal divide more int            | arith
-`rdiv.mult.I`     | `rrrr`   | reciprocal divide multiply int        | arith
-`rdivu.magic.I`   | `rr`     | reciprocal divide magic uint          | arith
-`rdivu.more.I`    | `rr`     | reciprocal divide more uint           | arith
-`rdivu.mult.I`    | `rrrr`   | reciprocal divide multiply uint       | arith
-`srl.I`           | `rrr`    | shift right logical int reg           | shift
-`sra.I`           | `rrr`    | shift right arithmetic int reg        | shift
-`sll.I`           | `rrr`    | shift left logical int reg            | shift
-`srli.I`          | `rri`    | shift right logical int imm           | shift
-`srai.I`          | `rri`    | shift right arithmetic int imm        | shift
-`slli.I`          | `rri`    | shift left logical uint imm           | shift
-`fsrl.I`          | `rrrr`   | funnel shift right logical int        | shift
-`fsra.I`          | `rrrr`   | funnel shift right arithmetic int     | shift
-`fsll.I`          | `rrrr`   | funnel shift left logical int         | shift
-`fsrai.I`         | `rrri`   | funnel shift right logical int imm    | shift
-`fsrli.I`         | `rrri`   | funnel shift right arithmetic int imm | shift
-`fslli.I`         | `rrri`   | funnel shift left logical int imm     | shift
-`cmps.I`          | `rcrr`   | compare and set int                   | pred
-`select.I`        | `rrrr`   | select (merge) int                    | pred
-`amoadd.I`        | `roar`   | atomic add int                        | atomic
-`amoand.I`        | `roar`   | atomic and int                        | atomic
-`amoor.I`         | `roar`   | atomic or int                         | atomic
-`amoxor.I`        | `roar`   | atomic xor int                        | atomic
-`amomin.I`        | `roar`   | atomic min int                        | atomic
-`amomax.I`        | `roar`   | atomic max int                        | atomic
-`amominu.I`       | `roar`   | atomic min uint                       | atomic
-`amomaxu.I`       | `roar`   | atomic max uint                       | atomic
-`amoswap.I`       | `roa`    | atomic swap int                       | atomic
-`cmpswap.I`       | `rcoar`  | compare swap int                      | atomic
-`bswap.I`         | `rr`     | byte swap int                         | bits
-`ctz.I`           | `rr`     | count trailing zeros int              | bits
-`clz.I`           | `rr`     | count leading zeros int               | bits
-`popc.I`          | `rr`     | population count int                  | bits
-`brev.I`          | `rr`     | bit reverse int                       | bits
-`ror.I`           | `rrr`    | rotate right int reg                  | bits
-`rol.I`           | `rrr`    | rotate left int reg                   | bits
-`rori.I`          | `rri`    | rotate right int imm                  | bits
-`roli.I`          | `rri`    | rotate left int imm                   | bits
-`extract.I`       | `rrii`   | extract {offset,count} uint           | bits
-`deposit.I`       | `rrii`   | deposit {offset,count} uint           | bits
-`sext.II`         | `rr`     | sign extend int to int                | bits
-`zext.II`         | `rr`     | zero extend uint to uint              | bits
-`trunc.II`        | `rr`     | truncate uint to uint                 | bits
-`cvt.FI`          | `frd`    | convert int to float                  | fp-conv
-`cvtu.FI`         | `frd`    | convert uint to float                 | fp-conv
-`cvt.IF`          | `rf`     | convert float to int                  | fp-conv
-`cvt.FF`          | `ffd`    | convert float to float                | fp-conv
-`frac.IF`         | `rfd`    | float fraction int                    | fp-conv
-`exp.IF`          | `rfd`    | float exponent int                    | fp-conv
-`comp.FI`         | `frrd`   | float compose {mant,exp} float        | fp-conv
+`typedef.T`       | `tst`    | typedef `name type`                   | types
+`intrinsic.T`     | `tsii`   | intrinsic `name width flags`          | types
+`set.T`           | `tsit`   | list of masks `width constant`        | types
+`enum.T`          | `tsit`   | list of integers `width constant`     | types
+`struct.T`        | `tst`    | list of adjacent types `name type`    | types
+`union.T`         | `tst`    | list of overlapping types `name type` | types
+`field.T`         | `tsti`   | field `name type bitfield-width`      | types
+`array.T`         | `ttii`   | array `type count flags`              | types
+`pointer.T`       | `tti`    | pointer `type width`                  | types
+`constant.T`      | `tsi`    | constant `name imm`                   | types
+`function.T`      | `tsti`   | function `name param flags`           | types
+`param.T`         | `tsti`   | parameter `name type flags`           | types
+`qualifier.T`     | `tit`    | qualifier `type flags`                | types
+`attribute.T`     | `tst`    | attribute `name value`                | types
+`value.T`         | `tsi`    | value `string imm`                    | types
+`archive.T`       | `tst`    | archive `name source`                 | types
+`source.T`        | `tst`    | source `name type`                    | types
+`alias.T`         | `tsti`   | alias `name type flags`               | types
+`section`         | `vs`     | section `name`                        | data
+`astring`         | `vs`     | raw string `data`                     | data
+`astringz`        | `vs`     | raw string `data` (zero terminated)   | data
+`ustring`         | `vs`     | UTF-8 string `data`                   | data
+`ustringz`        | `vs`     | UTF-8 string `data` (zero terminated) | data
+`wstring`         | `vs`     | UTF-16 string `data`                  | data
+`wstringz`        | `vs`     | UTF-16 string `data` (zero terminated)| data
+`word.I`          | `vi`     | word `imm`                            | data
+`array.NI`        | `vb`     | array `data`                          | data
+`label.L`         | `vl`     | label `name`                          | constant
+`consta.L`        | `al`     | load addr `label`                     | constant
+`const.I`         | `ri`     | load int `imm`                        | constant
+`constu.I`        | `ri`     | load uint `imm`                       | constant
+`const.F`         | `fi`     | load float `imm`                      | constant
+`sysbr.I`         | `vi`     | system break `imm`                    | system
+`syscall.I`       | `vi`     | system call `imm`                     | system
+`sysret.I`        | `vi`     | system return `imm`                   | system
+`jalp.P`          | `ap`     | jump and link `proc`                  | branch-safe
+`jal.L`           | `al`     | jump and link `label`                 | branch-safe
+`j.L`             | `vl`     | jump `label`                          | branch-safe
+`cmpbr.I`         | `vcrrl`  | compare and branch `label`            | branch-safe
+`cmpbrlr.IP`      | `acrrp`  | compare branch and link `proc`        | branch-safe
+`cmpbrlr.IL`      | `acrrl`  | compare branch and link `label`       | branch-safe
+`jalr.A`          | `aia`    | jump and link `tag addr`              | branch-unsafe
+`cmpbrlr.IA`      | `acrria` | compare branch and link `tag addr`    | branch-unsafe
+`endbr.I`         | `vi`     | end branch `tag`                      | branch-unsafe
+`ld.I`            | `rao`    | load int `addr mo`                    | memory-unsafe
+`ldu.I`           | `rao`    | load uint `addr mo`                   | memory-unsafe
+`ldf.F`           | `fao`    | load float `addr mo`                  | memory-unsafe
+`ldt.T`           | `tao`    | load type `addr mo`                   | memory-unsafe
+`lda.A`           | `aao`    | load addr `addr mo`                   | memory-unsafe
+`ldp.P`           | `pao`    | load proc `addr mo`                   | memory-unsafe
+`ll.I`            | `rao`    | load-locked int `addr mo`             | memory-unsafe
+`llu.I`           | `rao`    | load-locked uint `addr mo`            | memory-unsafe
+`st.I`            | `varo`   | store int `addr int mo`               | memory-unsafe
+`stf.F`           | `vafo`   | store float `addr float mo`           | memory-unsafe
+`stt.T`           | `vato`   | store type `addr type mo`             | memory-unsafe
+`sta.A`           | `vaao`   | store addr `addr addr mo`             | memory-unsafe
+`stp.P`           | `vapo`   | store proc `addr proc mo`             | memory-unsafe
+`sc.I`            | `raro`   | store-cond int `addr int mo`          | memory-unsafe
+`ld.index.I`      | `rarrro` | load int `addr idx mul off mo`        | memory-unsafe
+`ldu.index.I`     | `rarrro` | load uint `addr idx mul off mo`       | memory-unsafe
+`ldf.index.F`     | `farrro` | load float `addr idx mul off mo`      | memory-unsafe
+`lda.index.T`     | `tarrro` | load type `addr idx mul off mo`       | memory-unsafe
+`lda.index.A`     | `aarrro` | load addr `addr idx mul off mo`       | memory-unsafe
+`ldp.index.P`     | `parrro` | load proc `addr idx mul off mo`       | memory-unsafe
+`st.index.I`      | `varrrro`| store int `addr idx mul off mo`       | memory-unsafe
+`stf.index.F`     | `varrrfo`| store float `addr idx mul off mo`     | memory-unsafe
+`stt.index.T`     | `varrrto`| store type `addr idx mul off mo`      | memory-unsafe
+`sta.index.A`     | `varrrao`| store addr `addr idx mul off mo`      | memory-unsafe
+`stp.index.P`     | `varrrpo`| store proc `addr idx mul off mo`      | memory-unsafe
+`alloc.TA`        | `atr`    | alloc `type count`                    | memory-safe
+`dealloc.TA`      | `vta`    | dealloc `type addr`                   | memory-safe
+`init.TA`         | `vta`    | init `type addr`                      | memory-safe
+`uninit.TA`       | `vta`    | uninit `type addr`                    | memory-safe
+`ref.TA`          | `ata`    | ref `type count`                      | memory-safe
+`unref.TA`        | `ata`    | unref `type addr`                     | memory-safe
+`ld.TI`           | `rtaro`  | load int `type addr idx mo`           | memory-safe
+`ldu.TI`          | `rtaro`  | load uint `type addr idx mo`          | memory-safe
+`ll.TI`           | `rtaro`  | load-locked int `type addr idx mo`    | memory-safe
+`llu.TI`          | `rtaro`  | load-locked uint `type addr idx mo`   | memory-safe
+`ldf.TF`          | `ftaro`  | load float `type addr idx mo`         | memory-safe
+`ldt.TT`          | `ttaro`  | load type `type addr idx mo`          | memory-safe
+`lda.TA`          | `ataro`  | load addr `type addr idx mo`          | memory-safe
+`lda.TP`          | `ptaro`  | load proc `type addr idx mo`          | memory-safe
+`st.TI`           | `vtarro` | store int `type addr idx int mo`      | memory-safe
+`st.TF`           | `vtarfo` | store float `type addr idx float mo`  | memory-safe
+`st.TT`           | `vtarto` | store type `type addr idx type mo`    | memory-safe
+`st.TA`           | `vtarao` | store addr `type addr idx addr mo`    | memory-safe
+`st.TP`           | `vtarpo` | store proc `type addr idx proc mo`    | memory-safe
+`sc.TI`           | `rtarro` | store-cond int `type addr idx int mo` | memory-safe
+`mv`              | `rr`     | move `int int`                        | arith
+`mvm`             | `mr`     | move `mask int`                       | arith
+`mva`             | `ar`     | move `addr int`                       | memory-unsafe
+`addpc.I`         | `arl`    | add program counter `int label`       | memory-unsafe
+`addp.I`          | `aar`    | add pointer int `addr int`            | memory-unsafe
+`subp.I`          | `aar`    | sub pointer int `addr int`            | memory-unsafe
+`pdiff.I`         | `raa`    | pointer difference `addr addr`        | memory-unsafe
+`addi.I`          | `rri`    | add `int imm`                         | arith
+`subi.I`          | `rri`    | sub `int imm`                         | arith
+`add.I`           | `rrr`    | add `int int`                         | arith
+`addc.F`          | `rrrr`   | add3 `int int int`                    | arith
+`sub.I`           | `rrr`    | sub `int int`                         | arith
+`subb.I`          | `rrr`    | sub3 `int int int`                    | arith
+`addu.I`          | `rrr`    | add uint `int int`                    | arith
+`addcu.I`         | `rrrr`   | add3 `uint uint uint`                 | arith
+`subu.I`          | `rrr`    | sub `uint uint`                       | arith
+`subbu.I`         | `rrr`    | sub3 `uint uint uint`                 | arith
+`and.I`           | `rrr`    | logical and `uint uint`               | arith
+`nand.I`          | `rrr`    | logical not and `uint uint`           | arith
+`andc.I`          | `rrr`    | logical and comp `uint uint`          | arith
+`or.I`            | `rrr`    | logical or `uint uint`                | arith
+`nor.I`           | `rrr`    | logical not or `uint uint`            | arith
+`orc.I`           | `rrr`    | logical or comp `uint uint`           | arith
+`xor.I`           | `rrr`    | logical xor `uint uint`               | arith
+`xnor.I`          | `rrr`    | logical not xor `uint uint`           | arith
+`neg.I`           | `rr`     | negate `int`                          | arith
+`not.I`           | `rr`     | complement `uint`                     | arith
+`min.I`           | `rrr`    | minimum `int int`                     | arith
+`max.I`           | `rrr`    | maximum `int int`                     | arith
+`minu.I`          | `rrr`    | minimum `uint uint`                   | arith
+`maxu.I`          | `rrr`    | maximum `uint uint`                   | arith
+`mul.I`           | `rrr`    | multiply `int int`                    | arith
+`mulu.I`          | `rrr`    | multiply `uint uint`                  | arith
+`mulsu.I`         | `rrr`    | multiply `uint int`                   | arith
+`mulh.I`          | `rrr`    | multiply high `int int`               | arith
+`mulhu.I`         | `rrr`    | multiply high `uint uint`             | arith
+`div.I`           | `rrr`    | divide `int int`                      | arith
+`rem.I`           | `rrr`    | remainder `int int`                   | arith
+`divu.I`          | `rrr`    | divide `uint uint`                    | arith
+`remu.I`          | `rrr`    | remainder `uint uint`                 | arith
+`rdiv.magic.I`    | `rr`     | recip divide magic `int`              | arith
+`rdiv.more.I`     | `rr`     | recip divide more `int`               | arith
+`rdiv.mult.I`     | `rrrr`   | recip divide mult `int int int`       | arith
+`rdivu.magic.I`   | `rr`     | recip divide magic `uint`             | arith
+`rdivu.more.I`    | `rr`     | recip divide more `uint`              | arith
+`rdivu.mult.I`    | `rrrr`   | recip divide mult `uint uint uint`    | arith
+`srl.I`           | `rrr`    | shift right logical `int reg`         | shift
+`sra.I`           | `rrr`    | shift right arithmetic `int reg`      | shift
+`sll.I`           | `rrr`    | shift left logical `int reg`          | shift
+`srli.I`          | `rri`    | shift right logical `int imm`         | shift
+`srai.I`          | `rri`    | shift right arithmetic `int imm`      | shift
+`slli.I`          | `rri`    | shift left logical `uint imm`         | shift
+`fsrl.I`          | `rrrr`   | funnel shift right logical `int reg`  | shift
+`fsra.I`          | `rrrr`   | funnel shift right arith `int reg`    | shift
+`fsll.I`          | `rrrr`   | funnel shift left logical `int reg`   | shift
+`fsrai.I`         | `rrri`   | funnel shift right logical `int imm`  | shift
+`fsrli.I`         | `rrri`   | funnel shift right arith `int imm`    | shift
+`fslli.I`         | `rrri`   | funnel shift left logical `int imm`   | shift
+`cmps.I`          | `rcrr`   | compare and set `cnd int int`         | pred
+`select.I`        | `rrrr`   | select (merge) `int int int`          | pred
+`fence`           | `vo`     | fence `mo`                            | atomic
+`amoadd.I`        | `raro`   | atomic add `addr int mo`              | atomic
+`amoand.I`        | `raro`   | atomic and `addr int mo`              | atomic
+`amoor.I`         | `raro`   | atomic or `addr int mo`               | atomic
+`amoxor.I`        | `raro`   | atomic xor `addr int mo`              | atomic
+`amomin.I`        | `raro`   | atomic min `addr int mo`              | atomic
+`amomax.I`        | `raro`   | atomic max `addr int mo`              | atomic
+`amominu.I`       | `raro`   | atomic min `addr uint mo`             | atomic
+`amomaxu.I`       | `raro`   | atomic max `addr uint mo`             | atomic
+`amoswap.I`       | `raro`   | atomic swap `addr int mo`             | atomic
+`cmpswap.I`       | `rcaro`  | compare swap `cnd addr int mo`        | atomic
+`bswap.I`         | `rr`     | byte swap `int int`                   | bits
+`ctz.I`           | `rr`     | count trailing zeros `int`            | bits
+`clz.I`           | `rr`     | count leading zeros `int`             | bits
+`popc.I`          | `rr`     | population count `int`                | bits
+`brev.I`          | `rr`     | bit reverse `int`                     | bits
+`ror.I`           | `rrr`    | rotate right `int reg`                | bits
+`rol.I`           | `rrr`    | rotate left `int reg`                 | bits
+`rori.I`          | `rri`    | rotate right `int imm`                | bits
+`roli.I`          | `rri`    | rotate left `int imm`                 | bits
+`extract.I`       | `rrii`   | extract `uint offset count`           | bits
+`deposit.I`       | `rrii`   | deposit `uint offset count`           | bits
+`sext.II`         | `rr`     | sign extend `int int`                 | bits
+`zext.II`         | `rr`     | zero extend `uint uint`               | bits
+`trunc.II`        | `rr`     | truncate `uint uint`                  | bits
+`cvt.FI`          | `frd`    | convert int to float `int flt rm`     | fp-conv
+`cvtu.FI`         | `frd`    | convert uint to float `uint flt rm`   | fp-conv
+`cvt.IF`          | `rf`     | convert float to int `flt int`        | fp-conv
+`cvtu.IF`         | `rf`     | convert float to uint `flt uint`      | fp-conv
+`cvt.FF`          | `ffd`    | convert float to float `flt flt rm`   | fp-conv
+`frac.IF`         | `rfd`    | float fraction `int flt rm`           | fp-conv
+`exp.IF`          | `rfd`    | float exponent `int flt rm`           | fp-conv
+`comp.FI`         | `frrd`   | float compose `mant exp flt`          | fp-conv
 `fgetrm`          | `r`      | get fpu rounding mode                 | fp-control
 `fgetex`          | `r`      | get fpu accrued exceptions            | fp-control
-`fsetrm`          | `vr`     | set fpu rounding mode                 | fp-control
-`fsetex`          | `vr`     | set fpu accrued exceptions            | fp-control
-`mv.F`            | `ff`     | move float                            | fp-arith
-`madd.F`          | `ffffd`  | fused multiply add float              | fp-arith
-`msub.F`          | `ffffd`  | fused multiply sub float              | fp-arith
-`mnadd.F`         | `ffffd`  | fused multiply neg add float          | fp-arith
-`mnsub.F`         | `ffffd`  | fused multiply neg sub float          | fp-arith
-`add.F`           | `fffd`   | add float                             | fp-arith
-`sub.F`           | `fffd`   | sub float                             | fp-arith
-`mul.F`           | `fffd`   | multiply float                        | fp-arith
-`div.F`           | `fffd`   | divide float                          | fp-arith
-`copysign.F`      | `fff`    | copysign float                        | fp-arith
-`copysign_xor.F`  | `fff`    | copysign xor float                    | fp-arith
-`copysign_not.F`  | `fff`    | copysign not float                    | fp-arith
-`min.F`           | `fff`    | minimum float                         | fp-arith
-`max.F`           | `fff`    | maximum float                         | fp-arith
-`sqrt.F`          | `ffd`    | square root float                     | fp-arith
-`cmps.F`          | `rcff`   | compare and set float                 | fp-pred
-`select.F`        | `frff`   | select (merge) float                  | fp-pred
-`class.F`         | `rf`     | classify float                        | fp-pred
-`ld.VI`           | `xaiom`  | load int                              | vec-memory
-`ldu.VI`          | `xaiom`  | load uint                             | vec-memory
-`ld.VF`           | `xaiom`  | load float                            | vec-memory
-`st.VI`           | `vaioxm` | store int                             | vec-memory
-`st.VF`           | `vaioxm` | store float                           | vec-memory
-`gather.VII`      | `xaxom`  | gather load int {indices}             | vec-memory
-`gatheru.VII`     | `xaxom`  | gather load uint {indices}            | vec-memory
-`gather.VIF`      | `xaxom`  | gather load float {indices}           | vec-memory
-`scatter.VII`     | `vaxoxm` | scatter store int {indices}           | vec-memory
-`scatteru.VII`    | `vaxoxm` | scatter store uint {indices}          | vec-memory
-`scatter.VIF`     | `vaxoxm` | scatter store float {indices}         | vec-memory
-`mv.x.x.VI`       | `xx`     | move vec to vec                       | vec-arith
-`mv.x.r.VI`       | `xr`     | move int to vec                       | vec-arith
-`mv.r.x.VI`       | `rx`     | move vec to int                       | vec-arith
-`splati.VI`       | `xim`    | splat (broadcast) int imm             | vec-arith
-`splatui.VI`      | `xim`    | splat (broadcast) uint imm            | vec-arith
-`splat.VI`        | `xrm`    | splat (broadcast) int reg             | vec-arith
-`add.VI`          | `xxxm`   | add int                               | vec-arith
-`addc.VI`         | `xxxm`   | add with carry int                    | vec-arith
-`sub.VI`          | `xxxm`   | sub int                               | vec-arith
-`subb.VI`         | `xxxm`   | sub wth borrow int                    | vec-arith
-`addu.VI`         | `xxxm`   | add uint                              | vec-arith
-`addcu.VI`        | `xxxm`   | add with carry uint                   | vec-arith
-`subu.VI`         | `xxxm`   | sub uint                              | vec-arith
-`subbu.VI`        | `xxxm`   | sub with borrow uint                  | vec-arith
-`and.VI`          | `xxxm`   | logical and int                       | vec-arith
-`nand.VI`         | `xxxm`   | logical not and int                   | vec-arith
-`andc.VI`         | `xxxm`   | logical and comp int                  | vec-arith
-`or.VI`           | `xxxm`   | logical or int                        | vec-arith
-`nor.VI`          | `xxxm`   | logical not or int                    | vec-arith
-`orc.VI`          | `xxxm`   | logical or comp int                   | vec-arith
-`xor.VI`          | `xxxm`   | logical xor int                       | vec-arith
-`xnor.VI`         | `xxxm`   | logical not xor int                   | vec-arith
-`neg.VI`          | `xxm`    | negate int                            | vec-arith
-`not.VI`          | `xxm`    | complement int                        | vec-arith
-`min.VI`          | `xxxm`   | minimum int                           | vec-arith
-`max.VI`          | `xxxm`   | maximum int                           | vec-arith
-`minu.VI`         | `xxxm`   | minimum uint                          | vec-arith
-`maxu.VI`         | `xxxm`   | maximum uint                          | vec-arith
-`mul.VI`          | `xxxm`   | multiply int                          | vec-arith
-`mul.VID`         | `xxxm`   | multiply (double-width) int           | vec-arith
-`mulu.VI`         | `xxxm`   | multiply uint                         | vec-arith
-`mulu.VID`        | `xxxm`   | multiply (double-width) uint          | vec-arith
-`mulh.VI`         | `xxxm`   | multiply high int                     | vec-arith
-`mulhu.VI`        | `xxxm`   | multiply high uint                    | vec-arith
-`div.VI`          | `xxxm`   | divide int                            | vec-arith
-`rem.VI`          | `xxxm`   | remainder int                         | vec-arith
-`divu.VI`         | `xxxm`   | divide uint                           | vec-arith
-`remu.VI`         | `xxxm`   | remainder uint                        | vec-arith
-`rdiv.mult.VI`    | `xxrr`   | reciprocal divide multiply int        | vec-arith
-`rdivu.mult.VI`   | `xxrr`   | reciprocal divide multiply uint       | vec-arith
-`srl.VI`          | `xxrm`   | shift right logical int reg           | vec-shift
-`sra.VI`          | `xxrm`   | shift right arithmetic int reg        | vec-shift
-`sll.VI`          | `xxrm`   | shift left logical int reg            | vec-shift
-`srli.VI`         | `xxim`   | shift right logical int imm           | vec-shift
-`srai.VI`         | `xxim`   | shift right arithmetic int imm        | vec-shift
-`slli.VI`         | `xxim`   | shift left logical uint imm           | vec-shift
-`srlx.VI`         | `xxxm`   | shift right logical int vec           | vec-shift
-`srax.VI`         | `xxxm`   | shift right arithmetic int vec        | vec-shift
-`sllx.VI`         | `xxxm`   | shift left logical uint vec           | vec-shift
-`fsrl.VI`         | `xxxrm`  | funnel shift right logical int        | vec-shift
-`fsra.VI`         | `xxxrm`  | funnel shift right arithmetic int     | vec-shift
-`fsll.VI`         | `xxxrm`  | funnel shift left logical int         | vec-shift
-`fsrai.VI`        | `xxxim`  | funnel shift right logical int imm    | vec-shift
-`fsrli.VI`        | `xxxim`  | funnel shift right arithmetic int imm | vec-shift
-`fslli.VI`        | `xxxim`  | funnel shift left logical int imm     | vec-shift
-`fsrax.VI`        | `xxxxm`  | funnel shift right logical int vec    | vec-shift
-`fsrlx.VI`        | `xxxxm`  | funnel shift right arithmetic int vec | vec-shift
-`fsllx.VI`        | `xxxxm`  | funnel shift left logical int vec     | vec-shift
-`cmps.VI`         | `mcxxm`  | compare and set int                   | vec-pred
-`select.VI`       | `xxxm`   | select (merge) int                    | vec-pred
-`bswap.VI`        | `xxm`    | byte swap int                         | vec-bits
-`ctz.VI`          | `xxm`    | count trailing zeros int              | vec-bits
-`clz.VI`          | `xxm`    | count leading zeros int               | vec-bits
-`popc.VI`         | `xxm`    | population count int                  | vec-bits
-`brev.VI`         | `xxm`    | bit reverse int                       | vec-bits
-`ror.VI`          | `xxrm`   | rotate right int reg                  | vec-bits
-`rol.VI`          | `xxrm`   | rotate left int reg                   | vec-bits
-`rori.VI`         | `xxim`   | rotate right int imm                  | vec-bits
-`roli.VI`         | `xxim`   | rotate left int imm                   | vec-bits
-`rorv.VI`         | `xxxm`   | rotate right int vec                  | vec-bits
-`rolv.VI`         | `xxxm`   | rotate left int vec                   | vec-bits
-`extract.VI`      | `xxiim`  | extract {offset,count} uint           | vec-bits
-`deposit.VI`      | `xxiim`  | deposit {offset,count} uint           | vec-bits
-`permute_16x4.VI` | `xxrm`   | permute {nibble indices} uint         | vec-horiz
-`permute_8x8.VI`  | `xxrm`   | permute {byte indices} uint           | vec-horiz
-`permute.VII`     | `xxxm`   | permute {vector indices} uint         | vec-horiz
-`sext.VII`        | `xxm`    | sign extend int to int                | vec-horiz
-`zext.VII`        | `xxm`    | zero extend uint to uint              | vec-horiz
-`trunc.VII`       | `xxm`    | truncate uint                         | vec-horiz
-`lsr.VI`          | `xxx`    | lane shift right uint                 | vec-horiz
-`lsl.VI`          | `xxx`    | lane shift left uint                  | vec-horiz
-`lror.VI`         | `xxx`    | lane rotate right uint                | vec-horiz
-`ltor.VI`         | `xxx`    | lane rotate left uint                 | vec-horiz
-`lzip01.VID`      | `xxx`    | lane zip mod 2 lane 0,1 uint          | vec-horiz
-`lzip01.VIQ`      | `xxx`    | lane zip mod 4 lane 0,1 uint          | vec-horiz
-`lzip23.VIQ`      | `xxx`    | lane zip mod 4 lane 2,3 uint          | vec-horiz
-`lunzip0.VI2`     | `xxx`    | lane unzip mod 2 lane 0 uint          | vec-horiz
-`lunzip1.VI2`     | `xxx`    | lane unzip mod 2 lane 1 uint          | vec-horiz
-`lunzip0.VI4`     | `xxx`    | lane unzip mod 4 lane 0 uint          | vec-horiz
-`lunzip1.VI4`     | `xxx`    | lane unzip mod 4 lane 1 uint          | vec-horiz
-`lunzip2.VI4`     | `xxx`    | lane unzip mod 4 lane 2 uint          | vec-horiz
-`lunzip3.VI4`     | `xxx`    | lane unzip mod 4 lane 3 uint          | vec-horiz
-`pair.swap.VI`    | `xxm`    | pair swap uint                        | vec-horiz
-`pair.add.VI2`    | `xxm`    | pair add reduce int                   | vec-horiz
-`pair.addu.VI2`   | `xxm`    | pair add reduce uint                  | vec-horiz
-`pair.sub.VI2`    | `xxm`    | pair sub reduce int                   | vec-horiz
-`pair.subu.VI2`   | `xxm`    | pair sub reduce uint                  | vec-horiz
-`cumsum.VI`       | `xxm`    | cumulative sum int                    | vec-horiz
-`cumsumu.VI`      | `xxm`    | cumulative sum uint                   | vec-horiz
-`mv.x.f.VF`       | `xf`     | move float to vec                     | vec-fp-conv
-`mv.f.x.VF`       | `fx`     | move vec to float                     | vec-fp-conv
-`splat.VF`        | `xfm`    | splat (broadcast) float reg           | vec-fp-conv
-`cvt.VFI`         | `xxdm`   | convert int to float                  | vec-fp-conv
-`cvtu.VFI`        | `xxdm`   | convert uint to float                 | vec-fp-conv
-`cvt.VIF`         | `xxm`    | convert float to int                  | vec-fp-conv
-`cvt.VFF`         | `xxdm`   | convert float to float                | vec-fp-conv
-`frac.VIF`        | `xxdm`   | float fraction int                    | vec-fp-conv
-`exp.VIF`         | `xxdm`   | float exponent int                    | vec-fp-conv
-`comp.VFI`        | `xxxdm`  | float compose {mant,exp} float        | vec-fp-conv
-`madd.VF`         | `xxxxdm` | fused multiply add float              | vec-fp-arith
-`msub.VF`         | `xxxxdm` | fused multiply sub float              | vec-fp-arith
-`mnadd.VF`        | `xxxxdm` | fused multiply neg add float          | vec-fp-arith
-`mnsub.VF`        | `xxxxdm` | fused multiply neg sub float          | vec-fp-arith
-`add.VF`          | `xxxdm`  | add float                             | vec-fp-arith
-`sub.VF`          | `xxxdm`  | sub float                             | vec-fp-arith
-`mul.VFD`         | `xxxdm`  | multiply float                        | vec-fp-arith
-`div.VF`          | `xxxdm`  | divide float                          | vec-fp-arith
-`copysign.VF`     | `xxxm`   | copysign float                        | vec-fp-arith
-`copysign_xor.VF` | `xxxm`   | copysign xor float                    | vec-fp-arith
-`copysign_not.VF` | `xxxm`   | copysign not float                    | vec-fp-arith
-`min.VF`          | `xxxm`   | minimum float                         | vec-fp-arith
-`max.VF`          | `xxxm`   | maximum float                         | vec-fp-arith
-`sqrt.VF`         | `xxdm`   | square root float                     | vec-fp-arith
-`cmps.VIF`        | `xcxxm`  | compare and set float                 | vec-fp-pred
-`select.VIF`      | `xxxxm`  | select float                          | vec-fp-pred
-`class.VIF`       | `xxm`    | classify float                        | vec-fp-pred
-`pair.add.VF2`    | `xxm`    | pair add reduce float                 | vec-fp-horiz
-`pair.sub.VF2`    | `xxm`    | pair sub reduce int                   | vec-fp-horiz
-`cumsum.VF`       | `xxm`    | cumulative sum float                  | vec-fp-horiz
+`fsetrm`          | `vr`     | set fpu rounding mode `int`           | fp-control
+`fsetex`          | `vr`     | set fpu accrued exceptions `int`      | fp-control
+`mv.F`            | `ff`     | move `flt flt`                        | fp-arith
+`madd.F`          | `ffffd`  | fused mult add `flt flt flt rm`       | fp-arith
+`msub.F`          | `ffffd`  | fused mult sub `flt flt flt rm`       | fp-arith
+`mnadd.F`         | `ffffd`  | fused mult neg add `flt flt flt rm`   | fp-arith
+`mnsub.F`         | `ffffd`  | fused mult neg sub `flt flt flt rm`   | fp-arith
+`add.F`           | `fffd`   | add float `flt flt rm`                | fp-arith
+`sub.F`           | `fffd`   | sub float `flt flt rm`                | fp-arith
+`mul.F`           | `fffd`   | multiply float `flt flt rm`           | fp-arith
+`div.F`           | `fffd`   | divide float `flt flt rm`             | fp-arith
+`copysign.F`      | `fff`    | copysign float `flt flt`              | fp-arith
+`copysign_xor.F`  | `fff`    | copysign xor float `flt flt`          | fp-arith
+`copysign_not.F`  | `fff`    | copysign not float `flt flt`          | fp-arith
+`min.F`           | `fff`    | minimum float `flt flt`               | fp-arith
+`max.F`           | `fff`    | maximum float `flt flt`               | fp-arith
+`sqrt.F`          | `ffd`    | square root float `flt rm`            | fp-arith
+`cmps.F`          | `rcff`   | compare and set float `cond flt flt`  | fp-pred
+`select.F`        | `fffm`   | select (merge) float `flt flt mask`   | fp-pred
+`class.F`         | `rf`     | classify `flt`                        | fp-pred
+`ld.VI`           | `xaiom`  | load int `addr imm mo mask`           | vec-memory
+`ldu.VI`          | `xaiom`  | load uint `addr imm mo mask`          | vec-memory
+`ld.VF`           | `xaiom`  | load float `addr imm mo mask`         | vec-memory
+`st.VI`           | `vaioxm` | store int `addr imm mo mask vec`      | vec-memory
+`st.VF`           | `vaioxm` | store float `addr imm mo mask vec`    | vec-memory
+`ld.VTI`          | `xtaom`  | load int `type addr mo mask`          | vec-memory
+`ldu.VTI`         | `xtaom`  | load uint `type addr mo mask`         | vec-memory
+`ld.VTF`          | `xtaom`  | load float `type addr mo mask`        | vec-memory
+`st.VTI`          | `vtaoxm` | store int `type addr mo mask vec`     | vec-memory
+`st.VTF`          | `vtaoxm` | store float `type addr mo mask vec`   | vec-memory
+`gather.VII`      | `xaxom`  | gather load `addr ind mo mask`        | vec-memory
+`gatheru.VII`     | `xaxom`  | gather load uint `addr ind mo mask`   | vec-memory
+`gather.VIF`      | `xaxom`  | gather load float `addr ind mo mask`  | vec-memory
+`scatter.VII`     | `vaxoxm` | scatter store int `addr ind mo mask`  | vec-memory
+`scatteru.VII`    | `vaxoxm` | scatter store uint `addr ind mo mask` | vec-memory
+`scatter.VIF`     | `vaxoxm` | scatter store float `addr ind mo mask`| vec-memory
+`mv.x.x.VI`       | `xx`     | move vec to vec `vec vec`             | vec-arith
+`mv.x.r.VI`       | `xr`     | move int to vec `vec int`             | vec-arith
+`mv.r.x.VI`       | `rx`     | move vec to int `int vec`             | vec-arith
+`splati.VI`       | `xim`    | splat (broadcast) `int imm mask`      | vec-arith
+`splatui.VI`      | `xim`    | splat (broadcast) `uint imm mask`     | vec-arith
+`splat.VI`        | `xrm`    | splat (broadcast) `int reg mask`      | vec-arith
+`add.VI`          | `xxxm`   | add int `vec vec mask`                | vec-arith
+`addc.VI`         | `xxxxm`  | add carry int `3*vec mask`            | vec-arith
+`sub.VI`          | `xxxm`   | sub int `vec vec mask`                | vec-arith
+`subb.VI`         | `xxxxm`  | sub borrow int `3*vec mask`           | vec-arith
+`addu.VI`         | `xxxm`   | add uint `vec vec mask`               | vec-arith
+`addcu.VI`        | `xxxxm`  | add carry uint `3*vec mask`           | vec-arith
+`subu.VI`         | `xxxm`   | sub uint  `vec vec mask`              | vec-arith
+`subbu.VI`        | `xxxxm`  | sub borrow uint `3*vec mask`          | vec-arith
+`and.VI`          | `xxxm`   | logical and int `vec vec mask`        | vec-arith
+`nand.VI`         | `xxxm`   | logical not and int `vec vec mask`    | vec-arith
+`andc.VI`         | `xxxm`   | logical and comp int `vec vec mask`   | vec-arith
+`or.VI`           | `xxxm`   | logical or int `vec vec mask`         | vec-arith
+`nor.VI`          | `xxxm`   | logical not or int `vec vec mask`     | vec-arith
+`orc.VI`          | `xxxm`   | logical or comp int `vec vec mask`    | vec-arith
+`xor.VI`          | `xxxm`   | logical xor int `vec vec mask`        | vec-arith
+`xnor.VI`         | `xxxm`   | logical not xor int `vec vec mask`    | vec-arith
+`neg.VI`          | `xxm`    | negate int `vec mask`                 | vec-arith
+`not.VI`          | `xxm`    | complement int `vec mask`             | vec-arith
+`min.VI`          | `xxxm`   | minimum int `vec vec mask`            | vec-arith
+`max.VI`          | `xxxm`   | maximum int `vec vec mask`            | vec-arith
+`minu.VI`         | `xxxm`   | minimum uint `vec vec mask`           | vec-arith
+`maxu.VI`         | `xxxm`   | maximum uint `vec vec mask`           | vec-arith
+`mul.VI`          | `xxxm`   | multiply int `vec vec mask`           | vec-arith
+`mul.VID`         | `xxxm`   | multiply wide int `vec vec mask`      | vec-arith
+`mulu.VI`         | `xxxm`   | multiply uint `vec vec mask`          | vec-arith
+`mulu.VID`        | `xxxm`   | multiply wide uint `vec vec mask`     | vec-arith
+`mulh.VI`         | `xxxm`   | multiply high int `vec vec mask`      | vec-arith
+`mulhu.VI`        | `xxxm`   | multiply high uint `vec vec mask`     | vec-arith
+`div.VI`          | `xxxm`   | divide int `vec vec mask`             | vec-arith
+`rem.VI`          | `xxxm`   | remainder int `vec vec mask`          | vec-arith
+`divu.VI`         | `xxxm`   | divide uint `vec vec mask`            | vec-arith
+`remu.VI`         | `xxxm`   | remainder uint `vec vec mask`         | vec-arith
+`rdiv.mult.VI`    | `xxrr`   | reciprocal divide mult `vec int int`  | vec-arith
+`rdivu.mult.VI`   | `xxrr`   | reciprocal divide mult `vec uint uint`| vec-arith
+`srl.VI`          | `xxrm`   | shift right logical int `vec reg mask`| vec-shift
+`sra.VI`          | `xxrm`   | shift right arith int `vec reg mask`  | vec-shift
+`sll.VI`          | `xxrm`   | shift left logical int `vec reg mask` | vec-shift
+`srli.VI`         | `xxim`   | shift right logical int `vec imm mask`| vec-shift
+`srai.VI`         | `xxim`   | shift right arithint `vec imm mask`   | vec-shift
+`slli.VI`         | `xxim`   | shift left logical uint `vec imm mask`| vec-shift
+`srlx.VI`         | `xxxm`   | shift right logical int `vec vec mask`| vec-shift
+`srax.VI`         | `xxxm`   | shift right arith int `vec vec mask`  | vec-shift
+`sllx.VI`         | `xxxm`   | shift left logical uint `vec vec mask`| vec-shift
+`fsrl.VI`         | `xxxrm`  | funnel shift right logical `vec int`  | vec-shift
+`fsra.VI`         | `xxxrm`  | funnel shift right arith `vec int`    | vec-shift
+`fsll.VI`         | `xxxrm`  | funnel shift left logical `vec int`   | vec-shift
+`fsrai.VI`        | `xxxim`  | funnel shift right logical `vec imm`  | vec-shift
+`fsrli.VI`        | `xxxim`  | funnel shift right arith `vec imm`    | vec-shift
+`fslli.VI`        | `xxxim`  | funnel shift left logical `vec imm`   | vec-shift
+`fsrax.VI`        | `xxxxm`  | funnel shift right logical `vec vec`  | vec-shift
+`fsrlx.VI`        | `xxxxm`  | funnel shift right arith `vec vec`    | vec-shift
+`fsllx.VI`        | `xxxxm`  | funnel shift left logical `vec vec`   | vec-shift
+`cmps.VI`         | `mcxxm`  | compare and set int `cnd vec vec mask`| vec-pred
+`select.VI`       | `xxxm`   | select (merge) int `vec vec mask`     | vec-pred
+`bswap.VI`        | `xxm`    | byte swap int `vec mask`              | vec-bits
+`ctz.VI`          | `xxm`    | count trailing zeros int `vec mask`   | vec-bits
+`clz.VI`          | `xxm`    | count leading zeros int `vec mask`    | vec-bits
+`popc.VI`         | `xxm`    | population count int `vec mask`       | vec-bits
+`brev.VI`         | `xxm`    | bit reverse int `vec mask`            | vec-bits
+`ror.VI`          | `xxrm`   | rotate right int reg `vec reg mask`   | vec-bits
+`rol.VI`          | `xxrm`   | rotate left int reg `vec reg mask`    | vec-bits
+`rori.VI`         | `xxim`   | rotate right int imm `vec imm mask`   | vec-bits
+`roli.VI`         | `xxim`   | rotate left int imm `vec imm mask`    | vec-bits
+`rorv.VI`         | `xxxm`   | rotate right int vec `vec vec mask`   | vec-bits
+`rolv.VI`         | `xxxm`   | rotate left int vec `vec vec mask`    | vec-bits
+`extract.VI`      | `xxiim`  | extract uint `vec offset count mask`  | vec-bits
+`deposit.VI`      | `xxiim`  | deposit uint `vec offset count mask`  | vec-bits
+`permute_16x4.VI` | `xxrm`   | permute uint `vec nibble-ind mask`    | vec-horiz
+`permute_8x8.VI`  | `xxrm`   | permute uint `vec byte-ind mask`      | vec-horiz
+`permute.VII`     | `xxxm`   | permute uint `vec ind mask`           | vec-horiz
+`sext.VII`        | `xxm`    | sign extend int to int  `vec mask`    | vec-horiz
+`zext.VII`        | `xxm`    | zero extend uint to uint `vec mask`   | vec-horiz
+`trunc.VII`       | `xxm`    | truncate uint `vec mask`              | vec-horiz
+`lsr.VI`          | `xxx`    | lane shift right uint `vec vec`       | vec-horiz
+`lsl.VI`          | `xxx`    | lane shift left uint `vec vec`        | vec-horiz
+`lror.VI`         | `xxx`    | lane rotate right uint `vec vec`      | vec-horiz
+`ltor.VI`         | `xxx`    | lane rotate left uint `vec vec`       | vec-horiz
+`lzip01.VID`      | `xxx`    | lane zip mod 2 lane 0,1 uint `vec vec`| vec-horiz
+`lzip01.VIQ`      | `xxx`    | lane zip mod 4 lane 0,1 uint `vec vec`| vec-horiz
+`lzip23.VIQ`      | `xxx`    | lane zip mod 4 lane 2,3 uint `vec vec`| vec-horiz
+`lunzip0.VI2`     | `xxx`    | lane unzip mod 2 lane 0 uint `vec vec`| vec-horiz
+`lunzip1.VI2`     | `xxx`    | lane unzip mod 2 lane 1 uint `vec vec`| vec-horiz
+`lunzip0.VI4`     | `xxx`    | lane unzip mod 4 lane 0 uint `vec vec`| vec-horiz
+`lunzip1.VI4`     | `xxx`    | lane unzip mod 4 lane 1 uint `vec vec`| vec-horiz
+`lunzip2.VI4`     | `xxx`    | lane unzip mod 4 lane 2 uint `vec vec`| vec-horiz
+`lunzip3.VI4`     | `xxx`    | lane unzip mod 4 lane 3 uint `vec vec`| vec-horiz
+`pair.swap.VI`    | `xxm`    | pair swap uint `vec mask`             | vec-horiz
+`pair.add.VI2`    | `xxm`    | pair add reduce int `vec mask`        | vec-horiz
+`pair.addu.VI2`   | `xxm`    | pair add reduce uint `vec mask`       | vec-horiz
+`pair.sub.VI2`    | `xxm`    | pair sub reduce int `vec mask`        | vec-horiz
+`pair.subu.VI2`   | `xxm`    | pair sub reduce uint `vec mask`       | vec-horiz
+`cumsum.VI`       | `xxm`    | cumulative sum int `vec mask`         | vec-horiz
+`cumsumu.VI`      | `xxm`    | cumulative sum uint `vec mask`        | vec-horiz
+`mv.x.f.VF`       | `xf`     | move float to vec `vec flt`           | vec-fp-conv
+`mv.f.x.VF`       | `fx`     | move vec to float `flt vec`           | vec-fp-conv
+`splat.VF`        | `xfm`    | splat (broadcast) float `vec flt mask`| vec-fp-conv
+`cvt.VFI`         | `xxdm`   | convert int to float `vec rm mask`    | vec-fp-conv
+`cvtu.VFI`        | `xxdm`   | convert uint to float `vec rm mask`   | vec-fp-conv
+`cvt.VIF`         | `xxm`    | convert float to int `vec mask`       | vec-fp-conv
+`cvtu.VIF`        | `xxm`    | convert float to uint `vec mask`      | vec-fp-conv
+`cvt.VFF`         | `xxdm`   | convert float to float `vec rm mask`  | vec-fp-conv
+`frac.VIF`        | `xxdm`   | float fraction int `vec rm mask`      | vec-fp-conv
+`exp.VIF`         | `xxdm`   | float exponent int `vec rm mask`      | vec-fp-conv
+`comp.VFI`        | `xxxdm`  | float compose `mant exp flt`          | vec-fp-conv
+`madd.VF`         | `xxxxdm` | fused mult add `3*vec rm mask`        | vec-fp-arith
+`msub.VF`         | `xxxxdm` | fused mult sub `3*vec rm mask`        | vec-fp-arith
+`mnadd.VF`        | `xxxxdm` | fused mult neg add `3*vec rm mask`    | vec-fp-arith
+`mnsub.VF`        | `xxxxdm` | fused mult neg sub `3*vec rm mask`    | vec-fp-arith
+`add.VF`          | `xxxdm`  | add float `vec vec rm mask`           | vec-fp-arith
+`sub.VF`          | `xxxdm`  | sub float `vec vec rm mask`           | vec-fp-arith
+`mul.VFD`         | `xxxdm`  | multiply float `vec vec rm mask`      | vec-fp-arith
+`div.VF`          | `xxxdm`  | divide float `vec vec rm mask`        | vec-fp-arith
+`copysign.VF`     | `xxxm`   | copysign float `vec vec mask`         | vec-fp-arith
+`copysign_xor.VF` | `xxxm`   | copysign xor float `vec vec mask`     | vec-fp-arith
+`copysign_not.VF` | `xxxm`   | copysign not float `vec vec mask`     | vec-fp-arith
+`min.VF`          | `xxxm`   | minimum float `vec vec mask`          | vec-fp-arith
+`max.VF`          | `xxxm`   | maximum float `vec vec mask`          | vec-fp-arith
+`sqrt.VF`         | `xxdm`   | square root float `vec rm mask`       | vec-fp-arith
+`cmps.VIF`        | `xcxxm`  | compare and set flt `cnd vec vec mask`| vec-fp-pred
+`select.VIF`      | `xxxm`   | select float `vec vec mask`           | vec-fp-pred
+`class.VIF`       | `xxm`    | classify float `vec mask`             | vec-fp-pred
+`pair.add.VF2`    | `xxm`    | pair add reduce float `vec mask`      | vec-fp-horiz
+`pair.sub.VF2`    | `xxm`    | pair sub reduce int `vec mask`        | vec-fp-horiz
+`cumsum.VF`       | `xxm`    | cumulative sum float `vec mask`       | vec-fp-horiz
 
 ### Operation Statistics
 
 category        | count
 --------------- | -----
+types           | 18
 data            | 9
 constant        | 5
 system          | 3
-branch          | 6
-memory          | 15
-arith           | 39
-shift           | 21
+branch-unsafe   | 3
+branch-safe     | 6
+memory-unsafe   | 30
+memory-safe     | 20
+thread          | 0
+arith           | 41
+shift           | 12
 pred            | 2
-atomic          | 10
+atomic          | 11
 bits            | 14
-fp-conv         | 7
+fp-conv         | 8
 fp-control      | 4
 fp-arith        | 15
 fp-pred         | 3
-vec-memory      | 11
-vec-arith       | 38
+vec-memory      | 16
+vec-arith       | 40
 vec-shift       | 18
 vec-pred        | 2
 vec-bits        | 13
 vec-horiz       | 26
-vec-fp-conv     | 10
+vec-fp-conv     | 11
 vec-fp-arith    | 14
 vec-fp-pred     | 3
 vec-fp-horiz    | 3
-total           | 282
+--------------- | -----
+total           | 350
