@@ -24,6 +24,7 @@ or operand arguments for the intermediate representation operations:
 - opcode types
 - operand types
 - integer type codes
+- endianness codes
 - floating-point type codes
 - floating point rounding modes
 - floating point status flags
@@ -45,6 +46,7 @@ mnem | mnemonic            | parameters                                       |
 `A`  | address type        | `{ a32, a64 }`                                   |
 `I`  | integer type        | `( iv, i8, i16, i32, i64, i128 )`                |
 `F`  | floating-point type | `( fv, f16, f32, f64, f128 )`                    |
+`E`  | endianness          | `{ le, be }`                                     |
 `L`  | label type          | `( local, global )`                              |
 `n`  | quantifier          | `( N )`                                          |
 `V`  | vector size         | `( 2, 4, 8, 16, 32, 64, 128 )`                   |
@@ -90,6 +92,15 @@ code | name   | width  | description                             |
 4    | `i32`  | 32     | 32-bit signed integer                   |
 5    | `i64`  | 64     | 64-bit signed integer                   |
 6    | `i128` | 128    | 128-bit signed integer                  |
+
+### Endianness Codes
+
+Endianness codes are used to parameterize loads and stores.
+
+code | mnemonic        | description                             |
+---- | --------------- | --------------------------------------- |
+0    | `le`            | Little-Endian                           |
+1    | `be`            | Big-Endian                              |
 
 ### Floating Point Type Codes
 
@@ -380,27 +391,27 @@ opcode            | operands | description                           | category
 `jalr.A`          | `aia`    | jump and link `tag addr`              | branch-unsafe
 `cmpbrlr.IA`      | `acrria` | compare branch and link `tag addr`    | branch-unsafe
 `endbr.I`         | `vi`     | end branch `tag`                      | branch-unsafe
-`ld.I`            | `rao`    | load int `addr mo`                    | memory-unsafe
-`ldu.I`           | `rao`    | load uint `addr mo`                   | memory-unsafe
+`ld.EI`           | `rao`    | load int `addr mo`                    | memory-unsafe
+`ldu.EI`          | `rao`    | load uint `addr mo`                   | memory-unsafe
 `ldf.F`           | `fao`    | load float `addr mo`                  | memory-unsafe
 `ldt.T`           | `tao`    | load type `addr mo`                   | memory-unsafe
 `lda.A`           | `aao`    | load addr `addr mo`                   | memory-unsafe
 `ldp.P`           | `pao`    | load proc `addr mo`                   | memory-unsafe
-`ll.I`            | `rao`    | load-locked int `addr mo`             | memory-unsafe
-`llu.I`           | `rao`    | load-locked uint `addr mo`            | memory-unsafe
-`st.I`            | `varo`   | store int `addr int mo`               | memory-unsafe
+`ll.EI`           | `rao`    | load-locked int `addr mo`             | memory-unsafe
+`llu.EI`          | `rao`    | load-locked uint `addr mo`            | memory-unsafe
+`st.EI`           | `varo`   | store int `addr int mo`               | memory-unsafe
 `stf.F`           | `vafo`   | store float `addr float mo`           | memory-unsafe
 `stt.T`           | `vato`   | store type `addr type mo`             | memory-unsafe
 `sta.A`           | `vaao`   | store addr `addr addr mo`             | memory-unsafe
 `stp.P`           | `vapo`   | store proc `addr proc mo`             | memory-unsafe
-`sc.I`            | `raro`   | store-cond int `addr int mo`          | memory-unsafe
-`ld.index.I`      | `rarrro` | load int `addr idx mul off mo`        | memory-unsafe
-`ldu.index.I`     | `rarrro` | load uint `addr idx mul off mo`       | memory-unsafe
+`sc.EI`           | `raro`   | store-cond int `addr int mo`          | memory-unsafe
+`ld.index.EI`     | `rarrro` | load int `addr idx mul off mo`        | memory-unsafe
+`ldu.index.EI`    | `rarrro` | load uint `addr idx mul off mo`       | memory-unsafe
 `ldf.index.F`     | `farrro` | load float `addr idx mul off mo`      | memory-unsafe
 `lda.index.T`     | `tarrro` | load type `addr idx mul off mo`       | memory-unsafe
 `lda.index.A`     | `aarrro` | load addr `addr idx mul off mo`       | memory-unsafe
 `ldp.index.P`     | `parrro` | load proc `addr idx mul off mo`       | memory-unsafe
-`st.index.I`      | `varrrro`| store int `addr idx mul off mo`       | memory-unsafe
+`st.index.EI`     | `varrrro`| store int `addr idx mul off mo`       | memory-unsafe
 `stf.index.F`     | `varrrfo`| store float `addr idx mul off mo`     | memory-unsafe
 `stt.index.T`     | `varrrto`| store type `addr idx mul off mo`      | memory-unsafe
 `sta.index.A`     | `varrrao`| store addr `addr idx mul off mo`      | memory-unsafe
