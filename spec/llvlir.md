@@ -379,9 +379,11 @@ opcode            | operands | description                           | category
 `const.I`         | `ri`     | load int `imm`                        | constant
 `constu.I`        | `ri`     | load uint `imm`                       | constant
 `const.F`         | `fi`     | load float `imm`                      | constant
+`random.I`        | `r`      | load random bits                      | system
 `sysbr.I`         | `vi`     | system break `imm`                    | system
 `syscall.I`       | `vi`     | system call `imm`                     | system
 `sysret.I`        | `vi`     | system return `imm`                   | system
+`systime.i64`     | `r`      | system time (nanoseconds from J2000.0)| system
 `jalp.P`          | `ap`     | jump and link `proc`                  | branch-safe
 `jal.L`           | `al`     | jump and link `label`                 | branch-safe
 `j.L`             | `vl`     | jump `label`                          | branch-safe
