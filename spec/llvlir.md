@@ -321,7 +321,7 @@ compose the primary width and types of the operation while some are modify it.
 
 ### Regsiter Types
 
-There IR has five distinct register types and the types do not alias.
+There IR has seven distinct register types and the types do not alias.
 
 - type register
 - address register
