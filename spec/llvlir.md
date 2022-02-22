@@ -2,9 +2,9 @@
 
 ## Introduction
 
-Low Level Variable Length Intermediate Representation is a succinct target
-independent byte-code for designed deferred translation modelling a VM
-designed to isolate an implementation of the C abstract virtual machine.
+Low Level Variable Length Intermediate Representation is a succinct
+target-independent byte-code designed for deferred translation, modelling a
+VM designed to isolate an implementation of the C abstract virtual machine.
 
 The opcode type integer and floating point type widths, vector sizes and
 comparison sub-operations are fully parameterized. Comparison sub operations
