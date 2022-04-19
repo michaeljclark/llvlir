@@ -89,9 +89,12 @@ code | name   | width  | description                             |
 1    | `i1`   | 1      | 1-bit signed integer                    |
 2    | `i8`   | 8      | 8-bit signed integer                    |
 3    | `i16`  | 16     | 16-bit signed integer                   |
-4    | `i32`  | 32     | 32-bit signed integer                   |
-5    | `i64`  | 64     | 64-bit signed integer                   |
-6    | `i128` | 128    | 128-bit signed integer                  |
+4    | `i24`  | 24     | 24-bit signed integer                   |
+5    | `i32`  | 32     | 32-bit signed integer                   |
+6    | `i48`  | 48     | 48-bit signed integer                   |
+7    | `i64`  | 64     | 64-bit signed integer                   |
+8    | `i96`  | 96     | 96-bit signed integer                   |
+9    | `i128` | 128    | 128-bit signed integer                  |
 
 ### Endianness Codes
 
