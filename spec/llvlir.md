@@ -553,6 +553,7 @@ opcode            | operands | description                           | category
 `min.F`           | `fff`    | minimum float `flt flt`               | fp-arith
 `max.F`           | `fff`    | maximum float `flt flt`               | fp-arith
 `sqrt.F`          | `ffd`    | square root float `flt rm`            | fp-arith
+`rsqrt.F`         | `ffd`    | recip square root float `flt rm`      | fp-arith
 `cmps.F`          | `rcff`   | compare and set float `cond flt flt`  | fp-pred
 `select.F`        | `fffm`   | select (merge) float `flt flt mask`   | fp-pred
 `class.F`         | `rf`     | classify `flt`                        | fp-pred
@@ -696,6 +697,7 @@ opcode            | operands | description                           | category
 `min.VF`          | `xxxm`   | minimum float `vec vec mask`          | vec-fp-arith
 `max.VF`          | `xxxm`   | maximum float `vec vec mask`          | vec-fp-arith
 `sqrt.VF`         | `xxdm`   | square root float `vec rm mask`       | vec-fp-arith
+`rsqrt.VF`        | `xxdm`   | recip square root float `vec rm mask` | vec-fp-arith
 `cmps.VIF`        | `xcxxm`  | compare and set flt `cnd vec vec mask`| vec-fp-pred
 `select.VIF`      | `xxxm`   | select float `vec vec mask`           | vec-fp-pred
 `class.VIF`       | `xxm`    | classify float `vec mask`             | vec-fp-pred
