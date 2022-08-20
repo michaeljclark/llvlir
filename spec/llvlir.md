@@ -521,8 +521,10 @@ opcode            | operands | description                           | category
 `rol.I`           | `rrr`    | rotate left `int reg`                 | bits
 `rori.I`          | `rri`    | rotate right `int imm`                | bits
 `roli.I`          | `rri`    | rotate left `int imm`                 | bits
-`extract.I`       | `rrii`   | extract `uint offset count`           | bits
-`deposit.I`       | `rrii`   | deposit `uint offset count`           | bits
+`bext.I`          | `rrii`   | bit extract `uint offset count`       | bits
+`bdep.I`          | `rrii`   | bit deposit `uint offset count`       | bits
+`pbext.I`         | `rrr`    | parallel bit extract `uint bits`      | bits
+`pbdep.I`         | `rrr`    | parallel bit deposit `uint bits`      | bits
 `sext.II`         | `rr`     | sign extend `int int`                 | bits
 `zext.II`         | `rr`     | zero extend `uint uint`               | bits
 `trunc.II`        | `rr`     | truncate `uint uint`                  | bits
@@ -644,8 +646,10 @@ opcode            | operands | description                           | category
 `roli.VI`         | `xxim`   | rotate left int imm `vec imm mask`    | vec-bits
 `rorv.VI`         | `xxxm`   | rotate right int vec `vec vec mask`   | vec-bits
 `rolv.VI`         | `xxxm`   | rotate left int vec `vec vec mask`    | vec-bits
-`extract.VI`      | `xxiim`  | extract uint `vec offset count mask`  | vec-bits
-`deposit.VI`      | `xxiim`  | deposit uint `vec offset count mask`  | vec-bits
+`bext.VI`         | `xxiim`  | bit extract uint `vec off cnt mask`   | vec-bits
+`bdep.VI`         | `xxiim`  | bit deposit uint `vec off cnt mask`   | vec-bits
+`pbext.VI`        | `xxxm`   | parallel bit extract `vec bits mask`  | vec-bits
+`pbdep.VI`        | `xxxm`   | parallel bit deposit `vec bits mask`  | vec-bits
 `permute_16x4.VI` | `xxrm`   | permute uint `vec nibble-ind mask`    | vec-horiz
 `permute_8x8.VI`  | `xxrm`   | permute uint `vec byte-ind mask`      | vec-horiz
 `permute.VII`     | `xxxm`   | permute uint `vec ind mask`           | vec-horiz
