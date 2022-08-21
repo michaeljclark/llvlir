@@ -387,6 +387,9 @@ opcode            | operands | description                           | category
 `syscall.I`       | `vi`     | system call `imm`                     | system
 `sysret.I`        | `vi`     | system return `imm`                   | system
 `systime.i64`     | `r`      | system time (nanoseconds from J2000.0)| system
+`send`            | `vi`     | send `<unspecified>`                  | thread
+`recv`            | `vi`     | recv `<unspecified>`                  | thread
+`wait`            | `vi`     | wait `<unspecified>`                  | thread
 `jalp.P`          | `ap`     | jump and link `proc`                  | branch-safe
 `jal.L`           | `al`     | jump and link `label`                 | branch-safe
 `j.L`             | `vl`     | jump `label`                          | branch-safe
