@@ -7,10 +7,11 @@ target-independent byte-code designed for deferred translation, modelling a
 VM designed to isolate an implementation of the C abstract virtual machine.
 
 The opcode type integer and floating point type widths, vector sizes and
-comparison sub-operations are fully parameterized. Comparison sub operations
-are used consistently across compare and branch, compare branch and link,
-compare and set, and conditional moves meaning all comparison types are
-available across all branch and predicate operations.
+comparison types are fully parameterized. Comparison types are used consistently
+across compare operations which place results in branch registers and mask
+registers for vector comparisons. select, branch, branch and link, setb use
+branch predicate registers. vector operations use mask registers in place
+of branch predicate registers.
 
 The encoding favors expressiveness at the expense of redundancy and includes
 some redundant variants where the translation would be to the same instruction
@@ -29,7 +30,7 @@ or operand arguments for the intermediate representation operations:
 - floating point rounding modes
 - floating point status flags
 - floating point classification
-- comparison codes
+- comparison types
 - memory ordering flags
 - type parameter codes
 - type definition flags
@@ -44,6 +45,7 @@ mnem | mnemonic            | parameters                                       |
 `T`  | type type           | _type hash_                                      |
 `P`  | procedure type      | `{ p32, p64 }`                                   |
 `A`  | address type        | `{ a32, a64 }`                                   |
+`C`  | comparison type     | `{ fa, eq, lt, le, gt, ge, ne, tr, ... }`        |
 `I`  | integer type        | `( iv, i8, i16, i32, i64, i128 )`                |
 `F`  | floating-point type | `( fv, f16, f32, f64, f128 )`                    |
 `E`  | endianness          | `{ le, be }`                                     |
@@ -65,6 +67,7 @@ mnem | mnemonic           | arguments                                        |
 `v`  | void                | _no argument_                                    |
 `t`  | type register       | _LEB delta_                                      |
 `a`  | address register    | _LEB delta_                                      |
+`b`  | branch register     | _LEB delta_                                      |
 `p`  | procedure register  | _LEB delta_                                      |
 `r`  | general register    | _LEB delta_                                      |
 `f`  | float register      | _LEB delta_                                      |
@@ -72,7 +75,6 @@ mnem | mnemonic           | arguments                                        |
 `m`  | mask register       | _LEB delta_                                      |
 `l`  | label               | _LEB prefixed string_                            |
 `i`  | immediate value     | _LEB integer_                                    |
-`c`  | comparison          | _LEB enum_                                       |
 `o`  | order memory        | _LEB enum_                                       |
 `d`  | round mode          | _LEB enum_                                       |
 `s`  | string              | _LEB prefixed string_                            |
@@ -161,9 +163,9 @@ code | mnemonic        | description                             |
 32   | `nan`           | not-a-number                            |
 64   | `snan`          | signalling-not-a-number                 |
 
-### Comparison Codes
+### Comparison Types
 
-Comparison codes for branches and predicates are composed using
+Comparison types for branches and predicates are composed using
 three conditions: _equal-to_, _less-than_, _greater-than_, plus
 _unsigned_, a modifier for _less-than_ or _greater-than_. Several
 semantically redundant codes are reserved.
@@ -328,6 +330,7 @@ There IR has seven distinct register types and the types do not alias.
 
 - type register
 - address register
+- branch register
 - procedure register
 - general register
 - float register
@@ -393,11 +396,12 @@ opcode            | operands | description                           | category
 `jalp.P`          | `ap`     | jump and link `proc`                  | branch-safe
 `jal.L`           | `al`     | jump and link `label`                 | branch-safe
 `j.L`             | `vl`     | jump `label`                          | branch-safe
-`cmpbr.I`         | `vcrrl`  | compare and branch `label`            | branch-safe
-`cmpbrlr.IP`      | `acrrp`  | compare branch and link `proc`        | branch-safe
-`cmpbrlr.IL`      | `acrrl`  | compare branch and link `label`       | branch-safe
+`cmp.CI`          | `brr`    | compare `branch int int`              | branch-safe
+`br.I`            | `vbl`    | branch `branch label`                 | branch-safe
+`brlr.IP`         | `abp`    | branch and link `branch proc`         | branch-safe
+`brlr.IL`         | `abl`    | branch and link `branch label`        | branch-safe
+`brlr.IA`         | `abia`   | branch and link `branch tag addr`     | branch-unsafe
 `jalr.A`          | `aia`    | jump and link `tag addr`              | branch-unsafe
-`cmpbrlr.IA`      | `acrria` | compare branch and link `tag addr`    | branch-unsafe
 `endbr.I`         | `vi`     | end branch `tag`                      | branch-unsafe
 `ld.EI`           | `rao`    | load int `addr mo`                    | memory-unsafe
 `ldu.EI`          | `rao`    | load uint `addr mo`                   | memory-unsafe
@@ -502,8 +506,8 @@ opcode            | operands | description                           | category
 `fsrai.I`         | `rrri`   | funnel shift right logical `int imm`  | shift
 `fsrli.I`         | `rrri`   | funnel shift right arith `int imm`    | shift
 `fslli.I`         | `rrri`   | funnel shift left logical `int imm`   | shift
-`cmps.I`          | `rcrr`   | compare and set `cnd int int`         | pred
-`select.I`        | `rrrr`   | select (merge) `int int int`          | pred
+`setb.I`          | `rb`     | set `int branch`                      | pred
+`select.I`        | `rbrr`   | select (merge) `branch int int`       | pred
 `fence`           | `vo`     | fence `mo`                            | atomic
 `amoadd.I`        | `raro`   | atomic add `addr int mo`              | atomic
 `amoand.I`        | `raro`   | atomic and `addr int mo`              | atomic
@@ -514,7 +518,7 @@ opcode            | operands | description                           | category
 `amominu.I`       | `raro`   | atomic min `addr uint mo`             | atomic
 `amomaxu.I`       | `raro`   | atomic max `addr uint mo`             | atomic
 `amoswap.I`       | `raro`   | atomic swap `addr int mo`             | atomic
-`cmpswap.I`       | `rcaro`  | compare swap `cnd addr int mo`        | atomic
+`cmpswap.CI`      | `raro`   | compare swap `addr int mo`            | atomic
 `bswap.I`         | `rr`     | byte swap `int int`                   | bits
 `ctz.I`           | `rr`     | count trailing zeros `int`            | bits
 `clz.I`           | `rr`     | count leading zeros `int`             | bits
@@ -559,7 +563,7 @@ opcode            | operands | description                           | category
 `max.F`           | `fff`    | maximum float `flt flt`               | fp-arith
 `sqrt.F`          | `ffd`    | square root float `flt rm`            | fp-arith
 `rsqrt.F`         | `ffd`    | recip square root float `flt rm`      | fp-arith
-`cmps.F`          | `rcff`   | compare and set float `cond flt flt`  | fp-pred
+`cmp.CF`          | `bff`    | compare float `branch flt flt`        | fp-pred
 `select.F`        | `fffm`   | select (merge) float `flt flt mask`   | fp-pred
 `class.F`         | `rf`     | classify `flt`                        | fp-pred
 `ld.VI`           | `xaiom`  | load int `addr imm mo mask`           | vec-memory
@@ -636,7 +640,7 @@ opcode            | operands | description                           | category
 `fsrax.VI`        | `xxxxm`  | funnel shift right logical `vec vec`  | vec-shift
 `fsrlx.VI`        | `xxxxm`  | funnel shift right arith `vec vec`    | vec-shift
 `fsllx.VI`        | `xxxxm`  | funnel shift left logical `vec vec`   | vec-shift
-`cmps.VI`         | `mcxxm`  | compare and set int `cnd vec vec mask`| vec-pred
+`cmp.CVI`         | `mxxm`   | compare int `vec vec mask`            | vec-pred
 `select.VI`       | `xxxm`   | select (merge) int `vec vec mask`     | vec-pred
 `bswap.VI`        | `xxm`    | byte swap int `vec mask`              | vec-bits
 `ctz.VI`          | `xxm`    | count trailing zeros int `vec mask`   | vec-bits
@@ -705,7 +709,7 @@ opcode            | operands | description                           | category
 `max.VF`          | `xxxm`   | maximum float `vec vec mask`          | vec-fp-arith
 `sqrt.VF`         | `xxdm`   | square root float `vec rm mask`       | vec-fp-arith
 `rsqrt.VF`        | `xxdm`   | recip square root float `vec rm mask` | vec-fp-arith
-`cmps.VIF`        | `xcxxm`  | compare and set flt `cnd vec vec mask`| vec-fp-pred
+`cmp.CVF`         | `mxxm`   | compare flt `vec vec mask`            | vec-fp-pred
 `select.VIF`      | `xxxm`   | select float `vec vec mask`           | vec-fp-pred
 `class.VIF`       | `xxm`    | classify float `vec mask`             | vec-fp-pred
 `pair.add.VF2`    | `xxm`    | pair add reduce float `vec mask`      | vec-fp-horiz
@@ -719,30 +723,31 @@ category        | count
 types           | 18
 data            | 9
 constant        | 5
-system          | 3
+system          | 5
+thread          | 3
 branch-unsafe   | 3
-branch-safe     | 6
+branch-safe     | 7
 memory-unsafe   | 30
 memory-safe     | 20
-thread          | 0
+thread          | 3
 arith           | 41
 shift           | 12
 pred            | 2
 atomic          | 11
-bits            | 14
+bits            | 16
 fp-conv         | 8
 fp-control      | 4
-fp-arith        | 15
+fp-arith        | 16
 fp-pred         | 3
 vec-memory      | 16
 vec-arith       | 40
 vec-shift       | 18
 vec-pred        | 2
-vec-bits        | 13
+vec-bits        | 15
 vec-horiz       | 26
 vec-fp-conv     | 11
-vec-fp-arith    | 14
+vec-fp-arith    | 15
 vec-fp-pred     | 3
 vec-fp-horiz    | 3
 --------------- | -----
-total           | 350
+total           | 363
