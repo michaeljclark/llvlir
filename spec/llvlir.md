@@ -393,15 +393,19 @@ opcode            | operands | description                           | category
 `send`            | `vi`     | send `<unspecified>`                  | thread
 `recv`            | `vi`     | recv `<unspecified>`                  | thread
 `wait`            | `vi`     | wait `<unspecified>`                  | thread
+`jp.P`            | `vp`     | jump `proc`                           | branch-safe
+`jl.L`            | `vl`     | jump `label`                          | branch-safe
+`ja.A`            | `via`    | jump `tag addr`                       | branch-unsafe
 `jalp.P`          | `ap`     | jump and link `proc`                  | branch-safe
-`jal.L`           | `al`     | jump and link `label`                 | branch-safe
-`j.L`             | `vl`     | jump `label`                          | branch-safe
+`jall.L`          | `al`     | jump and link `label`                 | branch-safe
+`jala.A`          | `aia`    | jump and link `tag addr`              | branch-unsafe
 `cmp.CI`          | `brr`    | compare `branch int int`              | branch-safe
-`br.I`            | `vbl`    | branch `branch label`                 | branch-safe
-`brlr.IP`         | `abp`    | branch and link `branch proc`         | branch-safe
-`brlr.IL`         | `abl`    | branch and link `branch label`        | branch-safe
-`brlr.IA`         | `abia`   | branch and link `branch tag addr`     | branch-unsafe
-`jalr.A`          | `aia`    | jump and link `tag addr`              | branch-unsafe
+`brp.P`           | `vbp`    | branch `branch proc`                  | branch-safe
+`brl.L`           | `vbl`    | branch `branch label`                 | branch-safe
+`brr.A`           | `vbia`   | branch `branch tag addr`              | branch-unsafe
+`bralp.IP`        | `abp`    | branch and link `branch proc`         | branch-safe
+`brall.IL`        | `abl`    | branch and link `branch label`        | branch-safe
+`bralr.IA`        | `abia`   | branch and link `branch tag addr`     | branch-unsafe
 `endbr.I`         | `vi`     | end branch `tag`                      | branch-unsafe
 `ld.EI`           | `rao`    | load int `addr mo`                    | memory-unsafe
 `ldu.EI`          | `rao`    | load uint `addr mo`                   | memory-unsafe
@@ -725,8 +729,8 @@ data            | 9
 constant        | 5
 system          | 5
 thread          | 3
-branch-unsafe   | 3
-branch-safe     | 7
+branch-unsafe   | 5
+branch-safe     | 9
 memory-unsafe   | 30
 memory-safe     | 20
 thread          | 3
@@ -750,4 +754,5 @@ vec-fp-arith    | 15
 vec-fp-pred     | 3
 vec-fp-horiz    | 3
 --------------- | -----
-total           | 363
+total           | 367
+
