@@ -16,7 +16,7 @@ The following are some highlights of the LLVM and RISC-V inspired IR:
 - Vector SIMD with masked equivalents for all primitives except branches.
 - Vector SIMD conversions, sign or zero extension, truncation and merges.
 - Vector SIMD horizontal splat, lane shifts, rotates, and permutes (LUTs).
-- Vector SIMD parallel merge, pair reduce, swap, 2D/4D zip and unzip.
+- Vector SIMD parallel merge, pair reduce, swap, 2X/4X zip and unzip.
 - Vector SIMD double width multiply and cumulative sum.
 
 ## LLVLIR Specification
