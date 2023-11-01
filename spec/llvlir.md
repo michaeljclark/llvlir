@@ -15,7 +15,7 @@ of branch predicate registers.
 
 The encoding favors expressiveness at the expense of redundancy and includes
 some redundant variants where the translation would be to the same instruction
-with the input operands are swapped.
+where the input operands are swapped.
 
 ## Reference Tables
 
@@ -296,7 +296,7 @@ as LEB prefixed strings or LEB deltas after the opcode type parameters.
 ### Constraints
 
 Opcode types and operand types have constraints. Some opcode types are used to
-compose the primary width and types of the operation while some are modify it.
+compose the primary width and types of the operation while some modify them.
 
 - opcode types in the opcode suffix indicate vector size and types.
 - opcode type parameters are encoded using a variable length code after the
@@ -337,10 +337,10 @@ There IR has seven distinct register types and the types do not alias.
 - vector register
 - mask register
 
-Intputs are specified as a delta to the operation that outputs their value.
+Inputs are specified as a delta to the operation that outputs their value.
 Deltas are specific to each register type so are incremented whenever a new
 output for a specific register type is encountered. This ensures inputs can
-only refer to their type. Initial values or input terminals are the typed
+only refer to their type. Initial values or input terminals refer to typed
 constants, memory loads and move instructions. Pointer arithmetic and indexed
 loads and stores exists to trace pointers and convert their difference back
 into integers registers. Outside pointer values can be cast to addresses with
