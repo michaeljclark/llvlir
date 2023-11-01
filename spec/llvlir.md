@@ -468,7 +468,7 @@ opcode            | operands | description                           | category
 `addu.I`          | `rrr`    | add uint `int int`                    | arith
 `addcu.I`         | `rrrr`   | add3 `uint uint uint`                 | arith
 `subu.I`          | `rrr`    | sub `uint uint`                       | arith
-`subbu.I`         | `rrr`    | sub3 `uint uint uint`                 | arith
+`subbu.I`         | `rrrr`   | sub3 `uint uint uint`                 | arith
 `and.I`           | `rrr`    | logical and `uint uint`               | arith
 `nand.I`          | `rrr`    | logical not and `uint uint`           | arith
 `andc.I`          | `rrr`    | logical and comp `uint uint`          | arith
