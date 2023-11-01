@@ -462,13 +462,13 @@ opcode            | operands | description                           | category
 `addi.I`          | `rri`    | add `int imm`                         | arith
 `subi.I`          | `rri`    | sub `int imm`                         | arith
 `add.I`           | `rrr`    | add `int int`                         | arith
-`addc.F`          | `rrrr`   | add3 `int int int`                    | arith
+`addc.F`          | `rrrr`   | add carry `int int int`               | arith
 `sub.I`           | `rrr`    | sub `int int`                         | arith
-`subb.I`          | `rrr`    | sub3 `int int int`                    | arith
+`subb.I`          | `rrr`    | sub borrow `int int int`              | arith
 `addu.I`          | `rrr`    | add uint `int int`                    | arith
-`addcu.I`         | `rrrr`   | add3 `uint uint uint`                 | arith
+`addcu.I`         | `rrrr`   | add carry `uint uint uint`            | arith
 `subu.I`          | `rrr`    | sub `uint uint`                       | arith
-`subbu.I`         | `rrrr`   | sub3 `uint uint uint`                 | arith
+`subbu.I`         | `rrrr`   | sub borrow `uint uint uint`           | arith
 `and.I`           | `rrr`    | logical and `uint uint`               | arith
 `nand.I`          | `rrr`    | logical not and `uint uint`           | arith
 `andc.I`          | `rrr`    | logical and comp `uint uint`          | arith
