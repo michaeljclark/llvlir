@@ -109,9 +109,10 @@ code | mnemonic        | description                             |
 
 ### Floating Point Type Codes
 
-Type codes are used to parameterize opcodes with a specific numeric type.
-Type code 0 is followed by two LEB integers, the first specifying the
-exponent width and the second specifying the sign plus fraction bit width.
+Floating point type codes are used to parameterize opcodes with a
+specific numeric type. Floating point type code 0 is followed by
+two LEB integers, the first specifying the exponent width and the
+second specifying the sign plus fraction bit width.
 
 code | name   | width  | description                             |
 ---- | ------ | ------ | --------------------------------------- |
