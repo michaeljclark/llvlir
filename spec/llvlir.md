@@ -62,7 +62,7 @@ mnem | mnemonic            | parameters                                       |
 Operand types are used in format strings that encode the input and output
 operands for each operation.
 
-mnem | mnemonic           | arguments                                        |
+mnem | mnemonic            | arguments                                        |
 ---- | ------------------- | ------------------------------------------------ |
 `v`  | void                | _no argument_                                    |
 `t`  | type register       | _LEB delta_                                      |
